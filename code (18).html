@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Finanças Pessoais</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- jsPDF CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- SheetJS CDN -->
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <!-- Icons (Heroicons CDN) -->
+  <script src="https://unpkg.com/feather-icons"></script>
+</head>
+<body class="bg-gray-50">
+  <div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside class="h-screen bg-indigo-800 flex flex-col text-white w-64 sticky top-0">
+      <div class="flex flex-col items-center pt-8 pb-4 border-b border-indigo-700">
+        <span class="text-3xl font-bold tracking-wider">💸 Finanças</span>
+        <small class="mt-1 text-indigo-300">Controle Pessoal</small>
+      </div>
+      <nav class="flex-1 px-4 py-8 space-y-3">
+        <button class="menu-link flex items-center w-full px-4 py-2 rounded hover:bg-indigo-700" data-section="resumo">
+          <i data-feather="pie-chart" class="mr-3"></i> Resumo
+        </button>
+        <button class="menu-link flex items-center w-full px-4 py-2 rounded hover:bg-indigo-700" data-section="lancamento">
+          <i data-feather="plus-circle" class="mr-3"></i> Adicionar Lançamento
+        </button>
+        <button class="menu-link flex items-center w-full px-4 py-2 rounded hover:bg-indigo-700" data-section="categorias">
+          <i data-feather="folder" class="mr-3"></i> Categorias
+        </button>
+        <button class="menu-link flex items-center w-full px-4 py-2 rounded hover:bg-indigo-700" data-section="visao">
+          <i data-feather="list" class="mr-3"></i> Visão Geral
+        </button>
+        <button class="menu-link flex items-center w-full px-4 py-2 rounded hover:bg-indigo-700" data-section="metas">
+          <i data-feather="target" class="mr-3"></i> Metas Financeiras
+        </button>
+      </nav>
+      <div class="p-4 border-t border-indigo-700 text-xs text-center text-indigo-300">
+        &copy; 2024 - Controle Offline
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="flex-1 p-6 sm:p-12 overflow-y-auto">
+      <!-- SECTIONS -->
+
+      <!-- RESUMO -->
+      <section id="sec-resumo" class="hidden">
+        <h2 class="text-2xl font-bold mb-1">Resumo financeiro</h2>
+        <p class="mb-6 text-gray-500">Acompanhe seu saldo, lançamentos e gráficos dinâmicos!</p>
+        <div class="flex flex-wrap gap-6 mb-8">
+          <div class="flex-1 min-w-[260px] bg-white rounded shadow-md p-6 flex flex-col items-center">
+            <div class="text-gray-600 mb-2">Saldo Atual</div>
+            <div id="saldoTotal" class="text-3xl font-mono font-bold text-indigo-700">R$ 0,00</div>
+          </div>
+          <div class="flex-1 min-w-[260px] bg-white rounded shadow-md p-6 flex flex-col items-center">
+            <div class="text-gray-600 mb-2">Total Receitas</div>
+            <div id="totalReceitas" class="text-lg font-mono font-bold text-green-600">R$ 0,00</div>
+          </div>
+          <div class="flex-1 min-w-[260px] bg-white rounded shadow-md p-6 flex flex-col items-center">
+            <div class="text-gray-600 mb-2">Total Despesas</div>
+            <div id="totalDespesas" class="text-lg font-mono font-bold text-red-600">R$ 0,00</div>
+          </div>
+        </div>
+        <div class="rounded bg-white p-4 shadow mb-8 overflow-x-auto">
+          <h3 class="text-lg font-semibold mb-3">Últimos Lançamentos</h3>
+          <table class="min-w-full table-auto text-sm text-left" id="tabelaResumo">
+            <thead>
+              <tr class="bg-indigo-100">
+                <th class="py-2 px-2">Data</th>
+                <th class="py-2 px-2">Descrição</th>
+                <th class="py-2 px-2">Categoria</th>
+                <th class="py-2 px-2">Tipo</th>
+                <th class="py-2 px-2">Valor</th>
+                <th class="py-2 px-2">Ações</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <!-- Gráficos -->
+        <div class="grid md:grid-cols-3 gap-6">
+          <div class="bg-white p-6 rounded shadow">
+            <h4 class="text-center font-medium mb-3">Despesas por Categoria</h4>
+            <canvas id="graficoDespesas"></canvas>
+          </div>
+          <div class="bg-white p-6 rounded shadow">
+            <h4 class="text-center font-medium mb-3">Receitas por Categoria</h4>
+            <canvas id="graficoReceitas"></canvas>
+          </div>
+          <div class="bg-white p-6 rounded shadow">
+            <h4 class="text-center font-medium mb-3">Receita x Despesa</h4>
+            <canvas id="graficoComparativo"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- ADICIONAR LANCAMENTO -->
+      <section id="sec-lancamento" class="hidden max-w-xl mx-auto">
+        <h2 class="text-2xl font-bold mb-1">Adicionar Lançamento</h2>
+        <p class="mb-6 text-gray-500">Preencha os campos e salve seu lançamento financeiro.</p>
+        <form id="formLancamento" class="bg-white shadow p-6 rounded space-y-4">
+          <div>
+            <label class="mb-1 block text-sm text-gray-700">Tipo</label>
+            <select required name="tipo" class="w-full rounded px-2 py-2 border">
+              <option value="receita">Receita</option>
+              <option value="despesa">Despesa</option>
+            </select>
+          </div>
+          <div>
+            <label class="mb-1 block text-sm text-gray-700">Descrição</label>
+            <input required type="text" name="descricao" maxlength="80" class="w-full rounded px-2 py-2 border" placeholder="Ex: Salário, Restaurante...">
+          </div>
+          <div>
+            <label class="mb-1 block text-sm text-gray-700">Categoria</label>
+            <select required name="categoria" id="selectCategoria" class="w-full rounded px-2 py-2 border"></select>
+          </div>
+          <div>
+            <label class="mb-1 block text-sm text-gray-700">Valor (R$)</label>
+            <input required type="number" step="0.01" min="0.01" name="valor" class="w-full rounded px-2 py-2 border" placeholder="Ex: 95.00">
+          </div>
+          <div>
+            <label class="mb-1 block text-sm text-gray-700">Data</label>
+            <input required type="date" name="data" class="w-full rounded px-2 py-2 border">
+          </div>
+          <div class="pt-2">
+            <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded font-bold" type="submit">
+              Salvar
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- CATEGORIAS -->
+      <section id="sec-categorias" class="hidden max-w-xl mx-auto">
+        <h2 class="text-2xl font-bold mb-1">Gerenciar Categorias</h2>
+        <p class="mb-6 text-gray-500">Adicione ou remova categorias personalizadas conforme seu uso.</p>
+        <div class="bg-white p-6 rounded shadow">
+          <form id="formCategoria" class="flex gap-2 mb-4">
+            <input required type="text" maxlength="30" id="inputCategoria" class="flex-1 rounded px-3 py-2 border" placeholder="Nova categoria">
+            <button class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded font-bold" type="submit">
+              Adicionar
+            </button>
+          </form>
+          <ul id="listaCategorias" class="divide-y"></ul>
+        </div>
+      </section>
+
+      <!-- VISAO GERAL -->
+      <section id="sec-visao" class="hidden">
+        <h2 class="text-2xl font-bold mb-1">Visão Geral</h2>
+        <p class="mb-6 text-gray-500">Filtre lançamentos por data e exporte resultados.</p>
+        <div class="bg-white rounded shadow p-6 mb-6">
+          <div class="flex flex-col sm:flex-row sm:items-end gap-4">
+            <div>
+              <label class="block text-sm text-gray-700 mb-1">Data Inicial</label>
+              <input type="date" id="filtroInicio" class="px-2 py-1 border rounded">
+            </div>
+            <div>
+              <label class="block text-sm text-gray-700 mb-1">Data Final</label>
+              <input type="date" id="filtroFim" class="px-2 py-1 border rounded">
+            </div>
+            <button id="btnFiltrar" class="bg-indigo-500 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold mt-2 sm:mt-0">
+              Filtrar
+            </button>
+            <div class="flex-1"></div>
+            <button id="btnExportPDF" class="bg-red-500 hover:bg-red-700 text-white px-4 py-2 rounded font-bold flex items-center gap-2">
+              <i data-feather="file-text"></i> Exportar PDF
+            </button>
+            <button id="btnExportExcel" class="bg-green-600 hover:bg-green-800 text-white px-4 py-2 rounded font-bold flex items-center gap-2">
+              <i data-feather="file"></i> Exportar Excel
+            </button>
+          </div>
+        </div>
+        <div class="rounded bg-white p-4 shadow overflow-x-auto">
+          <table class="min-w-full table-auto text-sm text-left" id="tabelaVisao">
+            <thead>
+              <tr class="bg-indigo-100">
+                <th class="py-2 px-2">Data</th>
+                <th class="py-2 px-2">Descrição</th>
+                <th class="py-2 px-2">Categoria</th>
+                <th class="py-2 px-2">Tipo</th>
+                <th class="py-2 px-2">Valor</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- METAS FINANCEIRAS -->
+      <section id="sec-metas" class="hidden max-w-2xl mx-auto">
+        <h2 class="text-2xl font-bold mb-1">Metas Financeiras</h2>
+        <p class="mb-6 text-gray-500">Planeje e acompanhe suas metas!</p>
+        <form id="formMeta" class="bg-white p-6 rounded shadow flex flex-col gap-4 mb-8">
+          <div>
+            <label class="block text-sm text-gray-700 mb-1">Nome da Meta</label>
+            <input required type="text" maxlength="40" name="nome" class="w-full rounded px-2 py-2 border" placeholder="Ex: Viagem, Carro novo...">
+          </div>
+          <div class="flex gap-4">
+            <div class="flex-1">
+              <label class="block text-sm text-gray-700 mb-1">Valor da Meta (R$)</label>
+              <input required type="number" step="0.01" min="0.01" name="valorMeta" class="w-full rounded px-2 py-2 border">
+            </div>
+            <div class="flex-1">
+              <label class="block text-sm text-gray-700 mb-1">Valor Atual (R$)</label>
+              <input required type="number" step="0.01" min="0" name="valorAtual" class="w-full rounded px-2 py-2 border">
+            </div>
+          </div>
+          <div class="flex gap-4">
+            <div class="flex-1">
+              <label class="block text-sm text-gray-700 mb-1">Data Inicial</label>
+              <input required type="date" name="dataInicial" class="w-full rounded px-2 py-2 border">
+            </div>
+            <div class="flex-1">
+              <label class="block text-sm text-gray-700 mb-1">Data Final</label>
+              <input required type="date" name="dataFinal" class="w-full rounded px-2 py-2 border">
+            </div>
+          </div>
+          <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded font-bold w-fit" type="submit">
+            Salvar Meta
+          </button>
+        </form>
+        <div id="listaMetas" class="flex flex-col gap-6"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal Editar Lançamento -->
+  <div id="modalEditarLanc"
+    class="fixed top-0 left-0 w-full h-full z-40 bg-black bg-opacity-40 flex items-center justify-center hidden">
+    <div class="bg-white rounded shadow-lg p-8 relative w-full max-w-xl">
+      <button class="absolute top-3 right-3 bg-gray-300 hover:bg-gray-400 rounded" onclick="fechaModalLanc()">
+        <i data-feather="x"></i>
+      </button>
+      <h2 class="text-lg font-bold mb-4">Editar Lançamento</h2>
+      <form id="formEditarLancamento" class="space-y-3">
+        <div>
+          <label class="mb-1 block text-sm text-gray-700">Tipo</label>
+          <select required name="tipo" class="w-full rounded px-2 py-2 border">
+            <option value="receita">Receita</option>
+            <option value="despesa">Despesa</option>
+          </select>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm text-gray-700">Descrição</label>
+          <input required type="text" name="descricao" maxlength="80" class="w-full rounded px-2 py-2 border">
+        </div>
+        <div>
+          <label class="mb-1 block text-sm text-gray-700">Categoria</label>
+          <select required name="categoria" id="selectCategoriaEditar" class="w-full rounded px-2 py-2 border"></select>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm text-gray-700">Valor (R$)</label>
+          <input required type="number" step="0.01" min="0.01" name="valor" class="w-full rounded px-2 py-2 border">
+        </div>
+        <div>
+          <label class="mb-1 block text-sm text-gray-700">Data</label>
+          <input required type="date" name="data" class="w-full rounded px-2 py-2 border">
+        </div>
+        <input type="hidden" name="id">
+        <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded font-bold" type="submit">
+          Salvar Alterações
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Utilidades ------------------------------------------------------------------------
+    function formatarMoeda(valor) {
+      return valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, style: 'currency', currency: 'BRL' });
+    }
+    function uuid() {
+      // Gera um ID único simples.
+      return 'xxxxxx'.replace(/[x]/g, c => (Math.random()*36|0).toString(36));
+    }
+    function formatarData(str) {
+      if (!str) return '';
+      let d = new Date(str);
+      if (!d || isNaN(d)) return "";
+      return d.toLocaleDateString('pt-BR');
+    }
+
+    // Storage --------------------------------------------------------------------------
+    const STORAGE_KEY = 'financas-app-dados';
+    function dadosPadrao() {
+      return {
+        categorias: ['Salário', 'Alimentação', 'Lazer', 'Saúde'],
+        lancamentos: [],
+        metas: []
+      }
+    }
+    function obterDados() {
+      let obj = localStorage.getItem(STORAGE_KEY);
+      return obj ? JSON.parse(obj) : dadosPadrao();
+    }
+    function salvarDados(dados) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dados));
+    }
+
+    // Navegação -------------------------------------------------------------------------
+    const secIds = {
+      resumo: "sec-resumo",
+      lancamento: "sec-lancamento",
+      categorias: "sec-categorias",
+      visao: "sec-visao",
+      metas: "sec-metas"
+    };
+    function mostrarSecao(which) {
+      for (const [k, v] of Object.entries(secIds)) {
+        document.getElementById(v).classList.toggle("hidden", k !== which);
+      }
+      if (which === 'resumo') carregarResumo();
+      if (which === 'lancamento') preencherSelectCategoria();
+      if (which === 'categorias') carregarCategorias();
+      if (which === 'visao') atualizarVisao();
+      if (which === 'metas') renderMetas();
+    }
+    document.querySelectorAll('.menu-link').forEach(link =>
+      link.addEventListener("click", e => {
+        mostrarSecao(link.dataset.section);
+      })
+    );
+
+    // -------------------------- RESUMO ---------------------------------------------
+    let chartDesp, chartRec, chartComp;
+    function carregarResumo() {
+      let {lancamentos} = obterDados();
+      // Mostrar saldo, receitas, despesas
+      let receitas = lancamentos.filter(l => l.tipo === 'receita');
+      let despesas = lancamentos.filter(l => l.tipo === 'despesa');
+      let totalR = receitas.reduce((a, l) => a + Number(l.valor), 0);
+      let totalD = despesas.reduce((a, l) => a + Number(l.valor), 0);
+      document.getElementById('saldoTotal').textContent = formatarMoeda(totalR - totalD);
+      document.getElementById('totalReceitas').textContent = formatarMoeda(totalR);
+      document.getElementById('totalDespesas').textContent = formatarMoeda(totalD);
+
+      // Tabela últimos lançamentos (últimos 8)
+      let tbody = document.querySelector("#tabelaResumo tbody");
+      tbody.innerHTML = '';
+      lancamentos.slice().reverse().slice(0,8).forEach(l => {
+        let tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="py-1 px-2">${formatarData(l.data)}</td>
+          <td class="py-1 px-2">${l.descricao}</td>
+          <td class="py-1 px-2">${l.categoria}</td>
+          <td class="py-1 px-2">
+            <span class="rounded-full px-2 py-0.5 font-bold text-xs
+                ${l.tipo==='receita'?'bg-green-100 text-green-900':'bg-red-100 text-red-900'}">${l.tipo}
+            </span>
+          </td>
+          <td class="py-1 px-2 ${l.tipo==='receita'?'text-green-700':'text-red-700'}">${formatarMoeda(Number(l.valor))}</td>
+          <td class="py-1 px-2 flex gap-2">
+            <button class="p-1 rounded hover:bg-indigo-100" onclick="abrirModalEdicao('${l.id}')">
+              <i data-feather="edit" class="w-4 h-4"></i>
+            </button>
+            <button class="p-1 rounded hover:bg-red-100" onclick="removerLancamento('${l.id}')">
+              <i data-feather="trash-2" class="w-4 h-4"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      feather.replace();
+      gerarGraficosResumo(lancamentos);
+    }
+    function gerarGraficosResumo(lancamentos) {
+      // Despesas por Categoria
+      let despesasCat = {};
+      lancamentos.filter(l=>l.tipo==='despesa').forEach(l => {
+        despesasCat[l.categoria]= (despesasCat[l.categoria]||0) + Number(l.valor);
+      });
+      // Receitas por Categoria
+      let receitasCat = {};
+      lancamentos.filter(l=>l.tipo==='receita').forEach(l => {
+        receitasCat[l.categoria]= (receitasCat[l.categoria]||0) + Number(l.valor);
+      });
+      // Labels e datas
+      let labelsDesp = Object.keys(despesasCat);
+      let dataDesp = Object.values(despesasCat);
+      let labelsRec = Object.keys(receitasCat);
+      let dataRec = Object.values(receitasCat);
+      // Receita x Despesa mensal (últimos 12 meses)
+      let meses = [];
+      let mesesRec = [];
+      let mesesDes = [];
+      let hoje = new Date(); hoje.setDate(1);
+      for(let i=11;i>=0;i--) {
+        let mesData = new Date(hoje.getFullYear(), hoje.getMonth()-i, 1);
+        let mesStr = mesData.toLocaleString('pt-BR', {month:'short', year:'2-digit'});
+        meses.push(mesStr);
+        let rec = lancamentos.filter(l => l.tipo==='receita' && new Date(l.data).getMonth()===mesData.getMonth() && new Date(l.data).getFullYear()===mesData.getFullYear())
+                  .reduce((a,l)=>a+Number(l.valor),0);
+        let des = lancamentos.filter(l => l.tipo==='despesa' && new Date(l.data).getMonth()===mesData.getMonth() && new Date(l.data).getFullYear()===mesData.getFullYear())
+                  .reduce((a,l)=>a+Number(l.valor),0);
+        mesesRec.push(rec);
+        mesesDes.push(des);
+      }
+      // Chart.js
+      // Limpar gráficos antigos
+      if(chartDesp) chartDesp.destroy();
+      if(chartRec) chartRec.destroy();
+      if(chartComp) chartComp.destroy();
+      chartDesp = new Chart(document.getElementById('graficoDespesas'), {
+        type: 'doughnut',
+        data: {
+          labels: labelsDesp,
+          datasets: [{ data: dataDesp, backgroundColor: gerarCores(labelsDesp.length) }]
+        },
+        options: { plugins: { legend: {display:true, position:'bottom'} } }
+      });
+      chartRec = new Chart(document.getElementById('graficoReceitas'), {
+        type: 'doughnut',
+        data: {
+          labels: labelsRec,
+          datasets: [{ data: dataRec, backgroundColor: gerarCores(labelsRec.length) }]
+        },
+        options: { plugins: { legend: {display:true, position:'bottom'} } }
+      });
+      chartComp = new Chart(document.getElementById('graficoComparativo'), {
+        type: 'bar',
+        data: {
+          labels: meses,
+          datasets: [
+            {label:'Receita',backgroundColor:'#059669', data:mesesRec},
+            {label:'Despesa',backgroundColor:'#d0342c', data:mesesDes}
+          ]
+        },
+        options: { plugins: { legend: {display:true} }, responsive:true }
+      });
+    }
+    function gerarCores(n) { // paleta pastel
+      const cores=['#6366F1','#60A5FA','#7C3AED','#06b6d4','#FBBF24','#F472B6','#F87171','#34D399','#F59E42','#2DD4BF','#F43F5E','#EAB308'];
+      return Array.from({length:n}).map((_,i)=>cores[i%cores.length]);
+    }
+
+    // -------------------------- ADICIONAR LANCAMENTO ---------------------------------------------
+    document.getElementById('formLancamento').onsubmit = function(e){
+      e.preventDefault();
+      let dados = obterDados();
+      let f = e.target;
+      dados.lancamentos.push({
+        id: uuid(),
+        tipo: f.tipo.value,
+        descricao: f.descricao.value,
+        categoria: f.categoria.value,
+        valor: Number(f.valor.value),
+        data: f.data.value
+      });
+      salvarDados(dados);
+      f.reset();
+      preencherSelectCategoria();
+      alert('Lançamento adicionado!');
+    };
+
+    function preencherSelectCategoria(){
+      let dados = obterDados();
+      let sel = document.getElementById('selectCategoria');
+      sel.innerHTML = dados.categorias.map(ctg =>`<option>${ctg}</option>`).join('');
+    }
+
+    // -------------------------- REMOVER LANCAMENTO ---------------------------------------------
+    function removerLancamento(id){
+      if(!confirm("Confirma excluir o lançamento?")) return;
+      let dados = obterDados();
+      dados.lancamentos = dados.lancamentos.filter(l=>l.id!==id);
+      salvarDados(dados);
+      carregarResumo();
+      atualizarVisao();
+    }
+
+    // --------------------- EDITAR LANÇAMENTO (MODAL) -------------------------------------------
+    let edicaoAtualId = null;
+    function abrirModalEdicao(id){
+      let dados = obterDados();
+      let lanc = dados.lancamentos.find(x=>x.id===id);
+      if(!lanc) return;
+      edicaoAtualId = id;
+      // Preencher formulário modal
+      let form = document.getElementById('formEditarLancamento');
+      form.tipo.value = lanc.tipo;
+      form.descricao.value = lanc.descricao;
+      preencherSelectCategoriaEdicao(lanc.categoria);
+      form.categoria.value = lanc.categoria;
+      form.valor.value = lanc.valor;
+      form.data.value = lanc.data;
+      form.id.value = lanc.id;
+      document.getElementById('modalEditarLanc').classList.remove('hidden');
+      feather.replace();
+    }
+    function preencherSelectCategoriaEdicao(selValue){
+      let sel = document.getElementById('selectCategoriaEditar');
+      let dados = obterDados();
+      sel.innerHTML = dados.categorias.map(c=>
+        `<option${c===selValue?' selected':''}>${c}</option>`).join('');
+    }
+    document.getElementById('formEditarLancamento').onsubmit = function(e){
+      e.preventDefault();
+      let f = e.target;
+      let dados = obterDados();
+      let idx = dados.lancamentos.findIndex(l=>l.id===f.id.value);
+      if(idx>=0){
+        dados.lancamentos[idx]={
+          id: f.id.value,
+          tipo: f.tipo.value,
+          descricao: f.descricao.value,
+          categoria: f.categoria.value,
+          valor: Number(f.valor.value),
+          data: f.data.value
+        };
+        salvarDados(dados);
+        fechaModalLanc();
+        carregarResumo();
+        atualizarVisao();
+      }
+    }
+    function fechaModalLanc(){
+      document.getElementById('modalEditarLanc').classList.add('hidden');
+    }
+
+    // -------------------------- CATEGORIAS -----------------------------------------------------
+    function carregarCategorias(){
+      let dados = obterDados();
+      let ul = document.getElementById('listaCategorias');
+      ul.innerHTML = '';
+      dados.categorias.forEach(cat=>{
+        // Não permite remover se está vinculada a lançamentos
+        let vinc = dados.lancamentos.some(l=>l.categoria===cat);
+        let li = document.createElement('li');
+        li.className="flex justify-between items-center px-2 py-2";
+        li.innerHTML = `
+          <span>${cat}</span>
+          <button class="text-red-600 hover:bg-red-50 p-1 rounded" 
+          ${vinc?'disabled title="Categoria vinculada a lançamentos"':''} 
+          onclick="removerCategoria('${cat}')">
+            <i data-feather="trash-2"></i>
+          </button>
+        `;
+        ul.appendChild(li);
+      });
+      feather.replace();
+    }
+    document.getElementById('formCategoria').onsubmit = function(e){
+      e.preventDefault();
+      let novo = document.getElementById('inputCategoria').value.trim();
+      if (!novo) return;
+      let dados = obterDados();
+      if(dados.categorias.includes(novo)){
+        alert('Categoria já existe!');
+        return;
+      }
+      dados.categorias.push(novo);
+      salvarDados(dados);
+      carregarCategorias();
+      preencherSelectCategoria();
+      document.getElementById('inputCategoria').value='';
+    }
+    function removerCategoria(nome){
+      if(!confirm("Remover categoria? Lançamentos já cadastrados não serão afetados.")) return;
+      let dados = obterDados();
+      dados.categorias = dados.categorias.filter(c=>c!==nome);
+      salvarDados(dados);
+      carregarCategorias();
+      preencherSelectCategoria();
+    }
+
+    // -------------- VISAO GERAL - FILTROS, EXPORTACAO ------------------------------------------
+    function atualizarVisao(){
+      let dados = obterDados();
+      preencherTabelaVisao(dados.lancamentos);
+    }
+    function preencherTabelaVisao(lancamentos){
+      let tbody = document.querySelector('#tabelaVisao tbody');
+      tbody.innerHTML = '';
+      lancamentos.slice().reverse().forEach(l=> {
+        let tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="py-1 px-2">${formatarData(l.data)}</td>
+          <td class="py-1 px-2">${l.descricao}</td>
+          <td class="py-1 px-2">${l.categoria}</td>
+          <td class="py-1 px-2">
+            <span class="rounded-full px-2 py-0.5 font-bold text-xs
+            ${l.tipo==='receita'?'bg-green-100 text-green-900':'bg-red-100 text-red-900'}">${l.tipo}</span>
+          </td>
+          <td class="py-1 px-2 ${l.tipo==='receita'?'text-green-700':'text-red-700'}">${formatarMoeda(Number(l.valor))}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+    document.getElementById('btnFiltrar').onclick = function(){
+      let inicio = document.getElementById('filtroInicio').value;
+      let fim = document.getElementById('filtroFim').value;
+      let dados = obterDados();
+      let lancs = dados.lancamentos.slice();
+      if(inicio){
+        lancs = lancs.filter(l=> new Date(l.data)>=new Date(inicio));
+      }
+      if(fim){
+        lancs = lancs.filter(l=> new Date(l.data)<=new Date(fim));
+      }
+      preencherTabelaVisao(lancs);
+    };
+
+    // ---- EXPORTAÇÃO PDF E EXCEL ----
+    document.getElementById('btnExportPDF').onclick = function(){
+      let tbody = document.querySelector('#tabelaVisao tbody');
+      if(!tbody.children.length) return alert('Nada para exportar!');
+      const doc = new window.jspdf.jsPDF();
+      doc.setFontSize(16);
+      doc.text("Relatório de Lançamentos", 14, 18);
+      let rows=[];
+      Array.from(tbody.children).forEach(tr=>{
+        let arr=Array.from(tr.children).map(td=>td.innerText);
+        rows.push(arr);
+      });
+      doc.autoTable({
+        head: [['Data','Descrição','Categoria','Tipo','Valor']],
+        body: rows,
+        startY: 24
+      });
+      doc.save('lancamentos.pdf');
+    };
+    document.getElementById('btnExportExcel').onclick = function(){
+      let tbody = document.querySelector('#tabelaVisao tbody');
+      if(!tbody.children.length) return alert('Nada para exportar!');
+      let ws_data = [['Data','Descrição','Categoria','Tipo','Valor']];
+      Array.from(tbody.children).forEach(tr=>{
+        let arr=Array.from(tr.children).map(td=>td.innerText);
+        ws_data.push(arr);
+      });
+      let wb = XLSX.utils.book_new();
+      let ws = XLSX.utils.aoa_to_sheet(ws_data);
+      XLSX.utils.book_append_sheet(wb, ws, "Lançamentos");
+      XLSX.writeFile(wb, "lancamentos.xlsx");
+    };
+    // jsPDF autotable polyfill caso precise
+    if(!window.jspdf.jsPDF.prototype.autoTable){
+      let loadScript = document.createElement('script');
+      loadScript.src = 'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js';
+      document.head.appendChild(loadScript);
+    }
+
+    // --------------------------- METAS ---------------------------------------------------------
+    document.getElementById('formMeta').onsubmit = function(e){
+      e.preventDefault();
+      let f = e.target;
+      let dados = obterDados();
+      let nova = {
+        id: uuid(),
+        nome: f.nome.value,
+        valorMeta: Number(f.valorMeta.value),
+        valorAtual: Number(f.valorAtual.value),
+        dataInicial: f.dataInicial.value,
+        dataFinal: f.dataFinal.value
+      };
+      dados.metas.push(nova);
+      salvarDados(dados);
+      f.reset();
+      renderMetas();
+      alert('Meta salva!');
+    }
+
+    function renderMetas(){
+      let {metas} = obterDados();
+      let div = document.getElementById('listaMetas');
+      div.innerHTML = '';
+      if(!metas.length){
+        div.innerHTML = `<p class="text-gray-400 text-center">Nenhuma meta cadastrada.</p>`;
+        return;
+      }
+      metas.forEach(m=>{
+        let prc = Math.min(100, Math.round(100*m.valorAtual/m.valorMeta));
+        let barra = `<div class="bg-indigo-100 h-6 rounded-full relative overflow-hidden">
+            <div class="absolute h-full bg-indigo-600 text-white rounded-l-full left-0 top-0 flex items-center" 
+                 style="width:${prc}%; min-width:2rem;">
+              <span class="text-xs font-bold ml-2">${prc}%</span>
+            </div>
+        </div>`;
+        let card = document.createElement('div');
+        card.className="bg-white rounded shadow p-6";
+        card.innerHTML = `
+          <div class="flex justify-between items-center">
+            <span class="font-bold text-lg">${m.nome}</span>
+            <button class="text-red-600 hover:bg-red-50 p-1 rounded" title="Excluir meta"
+             onclick="removerMeta('${m.id}')"><i data-feather="trash"></i></button>
+          </div>
+          <div class="text-gray-700 mt-2 mb-2 text-sm">${formatarData(m.dataInicial)} até ${formatarData(m.dataFinal)}</div>
+          <div class="flex justify-between text-sm mb-2">
+            <span>Progresso:</span>
+            <span>${formatarMoeda(m.valorAtual)} de ${formatarMoeda(m.valorMeta)}</span>
+          </div>
+          ${barra}
+        `;
+        div.appendChild(card);
+      });
+      feather.replace();
+    }
+    function removerMeta(id){
+      if(!confirm('Excluir meta?')) return;
+      let dados = obterDados();
+      dados.metas = dados.metas.filter(m=>m.id!==id);
+      salvarDados(dados);
+      renderMetas();
+    }
+
+    // ---------------------- CARREGAMENTO INICIAL -------------------------------------------
+    function init(){
+      feather.replace();
+
+      // Se não existe dados (primeiro uso)
+      if(!localStorage.getItem(STORAGE_KEY)){
+        salvarDados(dadosPadrao());
+      }
+      // Preencher selects, etc.
+      preencherSelectCategoria();
+      mostrarSecao('resumo');
+    }
+    window.onload = init;
+  </script>
+</body>
+</html>
